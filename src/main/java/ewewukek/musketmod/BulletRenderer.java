@@ -10,11 +10,11 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 
-public class BulletEntityRenderer extends EntityRenderer<BulletEntity> {
+public class BulletRenderer extends EntityRenderer<BulletEntity> {
     public static final ResourceLocation TEXTURE = MusketMod.resource("textures/entity/bullet.png");
     public static final ResourceLocation TEXTURE_FIRE = MusketMod.resource("textures/entity/bullet_fire.png");
 
-    public BulletEntityRenderer(EntityRendererProvider.Context context) {
+    public BulletRenderer(EntityRendererProvider.Context context) {
         super(context);
     }
 

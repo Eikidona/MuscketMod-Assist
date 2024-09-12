@@ -34,13 +34,13 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 import javax.annotation.Nullable;
 import java.util.function.Consumer;
 
-public class SteelGunItem extends Item implements GeoItem {
+public class GunItem extends Item implements GeoItem {
     private static final RawAnimation RELOAD_ANIME = RawAnimation.begin().thenPlay("use.reload");
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     public static ItemStack activeMainHandStack;
     public static ItemStack activeOffhandStack;
 
-    public SteelGunItem(Properties pProperties) {
+    public GunItem(Properties pProperties) {
         super(pProperties);
         SingletonGeoAnimatable.registerSyncedAnimatable(this);
     }
@@ -92,7 +92,7 @@ public class SteelGunItem extends Item implements GeoItem {
         }
         // pistol in offhand is unusable if musket is equipped in main hand
         ItemStack stack = entity.getMainHandItem();
-        if (!stack.isEmpty() && stack.getItem() instanceof SteelGunItem gun) {
+        if (!stack.isEmpty() && stack.getItem() instanceof GunItem gun) {
             return !gun.twoHanded();
         }
         return true;
@@ -101,7 +101,7 @@ public class SteelGunItem extends Item implements GeoItem {
     public static boolean isInHand(LivingEntity entity, InteractionHand hand) {
         ItemStack stack = entity.getItemInHand(hand);
         if (stack.isEmpty()) return false;
-        if (stack.getItem() instanceof SteelGunItem gun) {
+        if (stack.getItem() instanceof GunItem gun) {
             return gun.canUseFrom(entity, hand);
         }
         return false;
@@ -157,7 +157,7 @@ public class SteelGunItem extends Item implements GeoItem {
 
         } else if (hand == InteractionHand.MAIN_HAND) {
             ItemStack offhandStack = player.getOffhandItem();
-            if (offhandStack.getItem() instanceof SteelGunItem offhandGun && isLoaded(offhandStack)
+            if (offhandStack.getItem() instanceof GunItem offhandGun && isLoaded(offhandStack)
                     && offhandGun.canUseFrom(player, InteractionHand.OFF_HAND)) {
 
                 return InteractionResultHolder.pass(stack);
@@ -189,12 +189,12 @@ public class SteelGunItem extends Item implements GeoItem {
     @Override
     public void initializeClient(Consumer<IClientItemExtensions> consumer) {
         consumer.accept(new IClientItemExtensions() {
-            private SteelGunItemRender renderer;
+            private GunItemRender renderer;
 
             @Override
             public BlockEntityWithoutLevelRenderer getCustomRenderer() {
                 if (this.renderer == null)
-                    this.renderer = new SteelGunItemRender();
+                    this.renderer = new GunItemRender();
 
                 return this.renderer;
             }

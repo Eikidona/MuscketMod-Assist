@@ -1,14 +1,24 @@
 {
  "required": true,
- "minVersion": "0.8.5",
- "package": "org.zeith.modid.mixins",
- "refmap": "mixins.modid.refmap.json",
- "target": "@env(DEFAULT)",
+ "package": "ewewukek.musketmod.mixin",
  "compatibilityLevel": "JAVA_17",
- "mixins": [
- ],
+ "refmap": "mixins.musketmod.refmap.json",
  "client": [
+  "AbstractClientPlayerMixin",
+  "HumanoidModelMixin",
+  "LocalPlayerMixin",
+  "MinecraftMixin",
+  "MultiPlayerGameModeMixin",
+  "PlayerMixin",
+  "SkeletonModelMixin"
  ],
- "server": [
- ]
+ "mixins": [
+  "AbstractSkeletonMixin",
+  "EntityMixin",
+  "GunItemMixin",
+  "PillagerMixin"
+ ],
+ "injectors": {
+  "defaultRequire": 1
+ }
 }
