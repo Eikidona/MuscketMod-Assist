@@ -1,5 +1,6 @@
 package ewewukek.musketmod;
 
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -34,15 +35,13 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 import javax.annotation.Nullable;
 import java.util.function.Consumer;
 
-public class GunItem extends Item implements GeoItem {
+public class GunItem extends Item {
     private static final RawAnimation RELOAD_ANIME = RawAnimation.begin().thenPlay("use.reload");
-    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     public static ItemStack activeMainHandStack;
     public static ItemStack activeOffhandStack;
 
     public GunItem(Properties pProperties) {
         super(pProperties);
-        SingletonGeoAnimatable.registerSyncedAnimatable(this);
     }
 
     public float bulletStdDev() {
@@ -186,21 +185,6 @@ public class GunItem extends Item implements GeoItem {
         return UseAnim.CROSSBOW;
     }
 
-    @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(new IClientItemExtensions() {
-            private GunItemRender renderer;
-
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (this.renderer == null)
-                    this.renderer = new GunItemRender();
-
-                return this.renderer;
-            }
-        });
-    }
-
     public static Pair<Integer, Integer> getLoadingDuration(ItemStack stack) {
         return Pair.of(15, 20);
     }
@@ -241,7 +225,6 @@ public class GunItem extends Item implements GeoItem {
         double dist = entity.distanceTo(target);
         double ticks = 20 * dist / bulletSpeed();
         // predicted bullet drop
-        double bulletDrop = 0.5 * ticks * ticks * BulletEntity.GRAVITY;
         Vec3 pos = new Vec3(
                 target.getX(),
                 0.5 * (target.getEyeY() + target.getY(0.5)),
@@ -249,7 +232,7 @@ public class GunItem extends Item implements GeoItem {
         );
         return new Vec3(
                 pos.x() - entity.getX(),
-                pos.y() + bulletDrop - entity.getEyeY(),
+                pos.y() - entity.getEyeY(),
                 pos.z() - entity.getZ()
         ).normalize();
     }
@@ -373,16 +356,6 @@ public class GunItem extends Item implements GeoItem {
         return 0;
     }
 
-    @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-
-    }
-
-    @Override
-    public AnimatableInstanceCache getAnimatableInstanceCache() {
-        return this.cache;
-    }
-
     public void fire(LivingEntity entity, ItemStack stack, Vec3 direction, Vec3 smokeOffset) {
         net.minecraft.world.level.Level level = entity.level();
         Vec3 origin = new Vec3(entity.getX(), entity.getEyeY(), entity.getZ());
@@ -403,7 +376,7 @@ public class GunItem extends Item implements GeoItem {
         MusketMod.sendSmokeEffect((ServerLevel)level, origin.add(smokeOffset), direction);
     }
 
-    public static void fireParticles(ServerLevel level, Vec3 origin, Vec3 direction) {
+    public static void fireParticles(ClientLevel level, Vec3 origin, Vec3 direction) {
         RandomSource random = RandomSource.create();
 
         for (int i = 0; i < 10; i++) {
@@ -445,7 +418,7 @@ public class GunItem extends Item implements GeoItem {
     }
 
     public static boolean isAmmo(ItemStack stack) {
-        return stack.getItem() == Items.BULLET;
+        return stack.getItem() == Items.CARTRIDGE;
     }
 
     public static ItemStack findAmmo(Player player) {

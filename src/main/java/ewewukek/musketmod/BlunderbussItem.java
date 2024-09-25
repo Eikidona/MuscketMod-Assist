@@ -30,10 +30,6 @@ public class BlunderbussItem extends GunItem {
 
     @Override
     public SoundEvent fireSound(ItemStack stack) {
-        if (hasFlame(stack)) {
-            return Sounds.BLUNDERBUSS_FIRE_FLAME;
-        } else {
-            return Sounds.BLUNDERBUSS_FIRE;
-        }
+        return Sounds.BLUNDERBUSS_FIRE;
     }
 }

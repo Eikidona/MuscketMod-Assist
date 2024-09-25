@@ -23,49 +23,4 @@ public class VanillaHelper {
             }
         }
     }
-
-    public static boolean canEnchant(Enchantment enchantment, ItemStack stack) {
-        if (!(stack.getItem() instanceof GunItem)) {
-            return false;
-        }
-
-        String name = "";
-        if (enchantment == Enchantments.BANE_OF_ARTHROPODS) {
-            name = "bane_of_arthropods";
-
-        } else if (enchantment == Enchantments.FIRE_ASPECT) {
-            name = "fire_aspect";
-
-        } else if (enchantment == Enchantments.FLAMING_ARROWS) {
-            name = "flame";
-
-        } else if (enchantment == Enchantments.INFINITY_ARROWS) {
-            name = "infinity";
-
-        } else if (enchantment == Enchantments.KNOCKBACK) {
-            name = "knockback";
-
-        } else if (enchantment == Enchantments.MOB_LOOTING) {
-            name = "looting";
-
-        } else if (enchantment == Enchantments.POWER_ARROWS) {
-            name = "power";
-
-        } else if (enchantment == Enchantments.QUICK_CHARGE) {
-            name = "quick_charge";
-
-        } else if (enchantment == Enchantments.SHARPNESS) {
-            name = "sharpness";
-
-        } else if (enchantment == Enchantments.SMITE) {
-            name = "smite";
-
-        } else {
-            return enchantment == Enchantments.UNBREAKING
-                || enchantment == Enchantments.MENDING;
-        }
-
-        TagKey<Item> tag = TagKey.create(Registries.ITEM, MusketMod.resource("enchantable/" + name));
-        return stack.is(tag);
-    }
 }

@@ -49,12 +49,13 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 mixin {
     add sourceSets.main, "mixins.${config.mod_id}.refmap.json"
+    dumpTargetOnFailure = true
 }
 
 println('Java: ' + System.getProperty('java.version') + ' JVM: ' + System.getProperty('java.vm.version') + '(' + System.getProperty('java.vendor') + ') Arch: ' + System.getProperty('os.arch'))
 minecraft {
-    mappings channel: 'parchment', version: '2023.09.03-1.20.1'
     accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+    mappings channel: 'parchment', version: '2023.09.03-1.20.1'
     copyIdeResources = true
     runs {
         client {
@@ -189,7 +190,7 @@ dependencies {
     }
 
 
-    annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
+    annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
 
     def libraries = new File(file("libraries"), "${config.mc_version}")
     if (!libraries.isDirectory()) libraries.mkdirs()
@@ -259,7 +260,6 @@ def replaceProperties = [
         forge_version    : "${config.mc_version}-${config.forge_version}", forge_version_range: config.forge_range,
         mod_id           : config.mod_id, mod_name: config.mod_name, mod_license: config.mod_license, mod_version: config.mod_version,
         mod_authors      : config.mod_authors, mod_description: config.mod_description,
-        hl_version       : config.hl_version, modrinth_project: config.modrinth_project,
         issue_tracker_url: config.issue_tracker_url, mod_credits: config.mod_credits
 ]
 processResources {

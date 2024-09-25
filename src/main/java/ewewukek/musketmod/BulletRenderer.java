@@ -3,6 +3,7 @@ package ewewukek.musketmod;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -24,16 +25,14 @@ public class BulletRenderer extends EntityRenderer<BulletEntity> {
     }
 
     @Override
-    public void render(BulletEntity bullet, float yaw, float dt, PoseStack poseStack, MultiBufferSource bufferSource, int light) {
+    public void render(BulletEntity bullet , float yaw, float dt, PoseStack poseStack, MultiBufferSource bufferSource, int light) {
         if (bullet.isFirstTick()) return;
-
         poseStack.pushPose();
         if (bullet.pelletCount() == 1) {
             poseStack.scale(0.1f, 0.1f, 0.1f);
         } else {
             poseStack.scale(bullet.isOnFire() ? 0.075f : 0.05f, 0.05f, 0.05f);
         }
-
         poseStack.mulPose(entityRenderDispatcher.cameraOrientation());
         poseStack.mulPose(Axis.YP.rotationDegrees(180));
 

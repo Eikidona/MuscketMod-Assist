@@ -18,11 +18,6 @@ import net.minecraftforge.network.NetworkEvent;
 
 public class ClientSetup {
     public ClientSetup(IEventBus bus) {
-        ModLoadingContext.get().registerExtensionPoint(
-            ConfigScreenHandler.ConfigScreenFactory.class,
-            () -> new ConfigScreenHandler.ConfigScreenFactory(
-                (client, parent) -> ClothConfigScreen.build(parent)));
-
         bus.addListener(this::setup);
         bus.addListener(this::registerRenderers);
         MinecraftForge.EVENT_BUS.addListener(EventPriority.LOW, this::renderHand);

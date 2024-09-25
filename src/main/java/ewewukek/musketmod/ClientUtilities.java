@@ -30,7 +30,6 @@ public class ClientUtilities {
         ResourceLocation location = MusketMod.resource("loaded");
         ItemProperties.register(Items.MUSKET, location, predicate);
         ItemProperties.register(Items.MUSKET_WITH_BAYONET, location, predicate);
-        ItemProperties.register(Items.MUSKET_WITH_SCOPE, location, predicate);
         ItemProperties.register(Items.BLUNDERBUSS, location, predicate);
         ItemProperties.register(Items.PISTOL, location, predicate);
     }
@@ -39,16 +38,6 @@ public class ClientUtilities {
     public static boolean canUseScope;
     public static boolean attackKeyDown;
     public static boolean preventFiring;
-
-    public static void setScoping(Player player, boolean scoping) {
-        if (scoping != ScopedMusketItem.isScoping) {
-            player.playSound(
-                scoping ? SoundEvents.SPYGLASS_USE : SoundEvents.SPYGLASS_STOP_USING,
-                1.0f, 1.0f);
-            ScopedMusketItem.isScoping = scoping;
-        }
-        if (!scoping) ScopedMusketItem.recoilTicks = 0;
-    }
 
     public static boolean poseArm(LivingEntity entity, ModelPart arm, ModelPart head, boolean isRight) {
         if (entity.isUsingItem() || (entity instanceof Mob mob && !mob.isAggressive())) {

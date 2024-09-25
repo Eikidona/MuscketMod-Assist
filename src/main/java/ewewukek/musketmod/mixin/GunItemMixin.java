@@ -12,6 +12,6 @@ import net.minecraftforge.common.extensions.IForgeItem;
 abstract class GunItemMixin implements IForgeItem {
     @Override
     public boolean canApplyAtEnchantingTable(ItemStack stack, Enchantment enchantment) {
-        return VanillaHelper.canEnchant(enchantment, stack);
+        return false;
     }
 }

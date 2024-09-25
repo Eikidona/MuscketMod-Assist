@@ -1,8 +1,5 @@
 package ewewukek.musketmod;
 
-import java.util.Optional;
-import java.util.function.Predicate;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.BlockParticleOption;
@@ -34,11 +31,10 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.TntBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.*;
+
+import java.util.Optional;
+import java.util.function.Predicate;
 
 public class BulletEntity extends AbstractHurtingProjectile {
     // workaround for ClientboundAddEntityPacket.LIMIT
@@ -48,15 +44,9 @@ public class BulletEntity extends AbstractHurtingProjectile {
 
     public static final TagKey<Block> DESTROYED_BY_BULLETS = TagKey.create(Registries.BLOCK, MusketMod.resource("destroyed_by_bullets"));
     public static final TagKey<Block> DROPPED_BY_BULLETS = TagKey.create(Registries.BLOCK, MusketMod.resource("dropped_by_bullets"));
-
     public static final TagKey<EntityType<?>> HEADSHOTABLE = TagKey.create(Registries.ENTITY_TYPE, MusketMod.resource("headshotable"));
-
     public static final ResourceKey<DamageType> BULLET_DAMAGE = ResourceKey.create(Registries.DAMAGE_TYPE, MusketMod.resource("bullet"));
     public static EntityType<BulletEntity> ENTITY_TYPE;
-
-    public static final double GRAVITY = 0.05;
-    public static final double AIR_FRICTION = 0.99;
-    public static final double WATER_FRICTION = 0.6;
     public static final short LIFETIME = 100;
     public static final int HIT_PARTICLE_COUNT = 5;
     public static final float IGNITE_SECONDS = 5.0f;
@@ -135,7 +125,6 @@ public class BulletEntity extends AbstractHurtingProjectile {
         wasTouchingWater = updateFluidHeightAndDoFluidPushing(FluidTags.WATER, 0);
         if (wasTouchingWater) {
             waterPos = from;
-            velocity = velocity.scale(WATER_FRICTION);
             to = from.add(velocity);
             setDeltaMovement(velocity);
         }
@@ -165,21 +154,6 @@ public class BulletEntity extends AbstractHurtingProjectile {
                     waterPos = fluidHitResult.getLocation();
                     double speed = velocity.length();
                     double timeInWater = 1 - distanceToFluid / speed;
-                    double newSpeed = speed * (1 - timeInWater + timeInWater * Math.pow(WATER_FRICTION, timeInWater));
-
-                    if (hitResult.getType() != HitResult.Type.MISS) {
-                        if (distanceToFluid < distanceToHit) {
-                            if (distanceToHit < newSpeed) {
-                                timeInWater = (distanceToHit - distanceToFluid) / speed;
-                                newSpeed = speed * (1 - timeInWater + timeInWater * Math.pow(WATER_FRICTION, timeInWater));
-                            } else {
-                                hitResult = BlockHitResult.miss(null, null, null);
-                            }
-                        } else {
-                            fluidHitResult = BlockHitResult.miss(null, null, null);
-                        }
-                    }
-                    velocity = velocity.scale(newSpeed / speed);
                     to = from.add(velocity);
                     setDeltaMovement(velocity);
 
@@ -283,9 +257,6 @@ public class BulletEntity extends AbstractHurtingProjectile {
             }
         }
 
-        if (!wasTouchingWater) velocity = velocity.scale(AIR_FRICTION);
-        double gravity = GRAVITY * (1 - entityData.get(DROP_REDUCTION));
-        setDeltaMovement(velocity.subtract(0, gravity, 0));
         setPos(to);
         distanceTravelled += to.subtract(from).length();
         checkInsideBlocks();
@@ -308,7 +279,6 @@ public class BulletEntity extends AbstractHurtingProjectile {
         } else {
             damageMult = Config.mobDamageMultiplier;
         }
-
         DamageSource source = getDamageSource();
         boolean ignite = isOnFire() && target.getType() != EntityType.ENDERMAN;
 
