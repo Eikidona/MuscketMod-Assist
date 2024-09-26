@@ -15,7 +15,7 @@ import net.minecraft.world.item.SmithingTemplateItem;
 
 public class Items {
     public static final Item MUSKET = new MusketItem(new Item.Properties()
-            .durability(Config.musketDurability), false);
+            .durability(-1), false);
     public static final Item MUSKET_WITH_BAYONET = new MusketItem(new Item.Properties()
             .durability(Config.musketDurability), true);
     public static final Item BLUNDERBUSS = new BlunderbussItem(new Item.Properties()
