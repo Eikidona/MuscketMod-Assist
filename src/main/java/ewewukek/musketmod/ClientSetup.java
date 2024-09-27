@@ -20,7 +20,7 @@ public class ClientSetup {
     public ClientSetup(IEventBus bus) {
         bus.addListener(this::setup);
         bus.addListener(this::registerRenderers);
-        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOW, this::renderHand);
+//        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOW, this::renderHand);
     }
 
     public void setup(final FMLClientSetupEvent event) {
@@ -31,18 +31,18 @@ public class ClientSetup {
         event.registerEntityRenderer(BulletEntity.ENTITY_TYPE, BulletRenderer::new);
     }
 
-    public void renderHand(final RenderHandEvent event) {
-        ItemStack stack = event.getItemStack();
-        if (!stack.isEmpty() && stack.getItem() instanceof GunItem) {
-            Minecraft mc = Minecraft.getInstance();
-            ClientUtilities.renderGunInHand(
-                    mc.getEntityRenderDispatcher().getItemInHandRenderer(), mc.player,
-                    event.getHand(), event.getPartialTick(), event.getInterpolatedPitch(),
-                    event.getSwingProgress(), event.getEquipProgress(), stack,
-                    event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight());
-            event.setCanceled(true);
-        }
-    }
+//    public void renderHand(final RenderHandEvent event) {
+//        ItemStack stack = event.getItemStack();
+//        if (!stack.isEmpty() && stack.getItem() instanceof GunItem) {
+//            Minecraft mc = Minecraft.getInstance();
+//            ClientUtilities.renderGunInHand(
+//                    mc.getEntityRenderDispatcher().getItemInHandRenderer(), mc.player,
+//                    event.getHand(), event.getPartialTick(), event.getInterpolatedPitch(),
+//                    event.getSwingProgress(), event.getEquipProgress(), stack,
+//                    event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight());
+//            event.setCanceled(true);
+//        }
+//    }
 
     public static void handleSmokeEffectPacket(MusketMod.SmokeEffectPacket packet, Supplier<NetworkEvent.Context> ctx) {
         PacketListener listener = ctx.get().getNetworkManager().getPacketListener();

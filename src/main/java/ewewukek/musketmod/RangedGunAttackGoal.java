@@ -16,7 +16,7 @@ public class RangedGunAttackGoal<T extends Monster> extends Goal {
         this(mob, EnumSet.of(Flag.MOVE, Flag.LOOK));
     }
 
-    public RangedGunAttackGoal(T mob, EnumSet<Flag>flags) {
+    public RangedGunAttackGoal(T mob, EnumSet<Flag> flags) {
         this.mob = mob;
         setFlags(flags);
     }
@@ -39,7 +39,7 @@ public class RangedGunAttackGoal<T extends Monster> extends Goal {
         if (hand == null) return false;
 
         ItemStack stack = mob.getItemInHand(hand);
-        return GunItem.isReady(stack);
+        return GunItem.isLoaded(stack);
     }
 
     public boolean isLoading() {
@@ -55,7 +55,6 @@ public class RangedGunAttackGoal<T extends Monster> extends Goal {
 
         ItemStack stack = mob.getItemInHand(hand);
         if (!isLoading && !GunItem.isLoaded(stack)) {
-            GunItem.setLoadingStage(stack, 1);
             mob.startUsingItem(hand);
             isLoading = true;
         }
@@ -66,7 +65,7 @@ public class RangedGunAttackGoal<T extends Monster> extends Goal {
         if (hand == null) return;
 
         ItemStack stack = mob.getItemInHand(hand);
-        GunItem gun = (GunItem)stack.getItem();
+        GunItem gun = (GunItem) stack.getItem();
         Vec3 direction = gun.aimAt(mob, mob.getTarget());
         if (spread > 0) {
             direction = GunItem.addUniformSpread(direction, mob.getRandom(), spread);

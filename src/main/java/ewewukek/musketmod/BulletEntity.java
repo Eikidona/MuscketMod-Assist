@@ -33,6 +33,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -116,150 +118,182 @@ public class BulletEntity extends AbstractHurtingProjectile {
         }
 
         Level level = level();
-
+        Vec3 currentPos = position();
         Vec3 velocity = getDeltaMovement();
-        Vec3 from = position();
-        Vec3 to = from.add(velocity);
+        Vec3 nextPos = currentPos.add(velocity);
 
-        Vec3 waterPos = Vec3.ZERO;
+        // 水体检测
         wasTouchingWater = updateFluidHeightAndDoFluidPushing(FluidTags.WATER, 0);
-        if (wasTouchingWater) {
-            waterPos = from;
-            to = from.add(velocity);
-            setDeltaMovement(velocity);
-        }
-
-        HitResult hitResult = level.clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
-
-        // prevents hitting entities behind an obstacle
-        if (hitResult.getType() != HitResult.Type.MISS) {
-            to = hitResult.getLocation();
-        }
-
-        EntityHitResult entityHitResult = findHitEntity(from, to);
-        if (entityHitResult != null) {
-            hitResult = entityHitResult;
-            to = hitResult.getLocation();
-        }
-
-        if (!wasTouchingWater) {
-            BlockHitResult fluidHitResult = level.clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.ANY, this));
-            if (fluidHitResult.getType() == HitResult.Type.BLOCK) {
-                FluidState fluid = level.getFluidState(fluidHitResult.getBlockPos());
-                double distanceToFluid = fluidHitResult.getLocation().subtract(from).length();
-                double distanceToHit = to.subtract(from).length();
-
-                if (fluid.is(FluidTags.WATER)) {
-                    wasTouchingWater = true;
-                    waterPos = fluidHitResult.getLocation();
-                    double speed = velocity.length();
-                    double timeInWater = 1 - distanceToFluid / speed;
-                    to = from.add(velocity);
-                    setDeltaMovement(velocity);
-
-                    if (level.isClientSide && fluidHitResult.getType() != HitResult.Type.MISS) {
-                        double yv = fluidHitResult.getDirection() == Direction.UP ? 0.02 : 0;
-                        createHitParticles(ParticleTypes.SPLASH, waterPos, new Vec3(0.0, yv, 0.0));
-                        playHitSound(Sounds.BULLET_WATER_HIT, waterPos);
-                    }
-                } else if (fluid.is(FluidTags.LAVA)) {
-                    if (hitResult.getType() == HitResult.Type.MISS || distanceToFluid < distanceToHit) {
-                        hitResult = fluidHitResult;
-                        to = fluidHitResult.getLocation();
-                    }
-                }
-            }
+        if (wasTouchingWater && !touchedWater) {
+            handleWaterEntry(currentPos);
         }
 
         if (wasTouchingWater) {
             touchedWater = true;
-            extinguishFire();
         }
-        if (!level.isClientSide) setSharedFlagOnFire(getRemainingFireTicks() > 0);
 
-        if (hitResult.getType() != HitResult.Type.MISS) {
+        List<EntityHitResult> entityHits = getEntityHitResults(currentPos, nextPos);
+        for (EntityHitResult entityHit : entityHits) {
+            handleEntityHit(entityHit);
+        }
+
+        BlockHitResult blockHit = level.clip(new ClipContext(currentPos, nextPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
+        if (blockHit.getType() != HitResult.Type.MISS) {
+            BlockPos hitPos = blockHit.getBlockPos();
+            BlockState hitState = level().getBlockState(hitPos);
+            if (!hitState.isAir()) {
+                handleBlockHit(blockHit);
+                nextPos = blockHit.getLocation();
+                // 移除这里的 discard() 调用
+                return;
+            }
+        }
+
+        distanceTravelled += currentPos.distanceTo(nextPos);
+        setPos(nextPos);
+        setDeltaMovement(velocity);
+
+        if (level.isClientSide) {
+            createFlightEffects(currentPos, nextPos, velocity);
+        }
+
+        checkInsideBlocks();
+    }
+
+    private List<EntityHitResult> getEntityHitResults(Vec3 start, Vec3 end) {
+        List<EntityHitResult> results = new ArrayList<>();
+        AABB aabb = new AABB(start, end).inflate(0.5);
+        List<Entity> entities = level().getEntities(this, aabb, this::canHitEntity);
+
+        for (Entity entity : entities) {
+            AABB entityAabb = entity.getBoundingBox();
+            Optional<Vec3> hit = entityAabb.clip(start, end);
+            if (hit.isPresent()) {
+                results.add(new EntityHitResult(entity, hit.get()));
+            }
+        }
+
+        return results;
+    }
+
+    private void handleEntityHit(EntityHitResult entityHit) {
+        if (!level().isClientSide) {
+            Entity target = entityHit.getEntity();
             if (touchedWater) {
                 damage *= calculateEnergyFraction();
             }
-            if (!level.isClientSide) {
-                onHit(hitResult);
-                if (hitResult.getType() == HitResult.Type.BLOCK) {
-                    float destroyProbability = calculateEnergyFraction();
-                    if (pelletCount() > 1) destroyProbability = 1.5f * destroyProbability / pelletCount();
+            onHitEntity(entityHit);
+            // 注意：我们不再在这里调用 discard()，允许子弹继续飞行
+        } else {
+            createHitEffects(entityHit);
+        }
+    }
 
-                    if (random.nextFloat() < destroyProbability) {
-                        BlockPos blockPos = ((BlockHitResult)hitResult).getBlockPos();
-                        BlockState blockState = level().getBlockState(blockPos);
+    private void handleBlockDestruction(BlockHitResult blockHit) {
+        float destroyProbability = calculateEnergyFraction();
+        if (pelletCount() > 1) destroyProbability = 1.5f * destroyProbability / pelletCount();
 
-                        if (blockState.is(Blocks.TNT)) {
-                            TntBlock.explode(level(), blockPos);
-                            level.removeBlock(blockPos, false);
+        if (random.nextFloat() < destroyProbability) {
+            BlockPos blockPos = blockHit.getBlockPos();
+            BlockState blockState = level().getBlockState(blockPos);
 
-                        } else if (blockState.is(DESTROYED_BY_BULLETS)) {
-                            if (level.removeBlock(blockPos, false)) {
-                                blockState.getBlock().destroy(level, blockPos, blockState);
-                            }
-
-                        } else if (blockState.is(DROPPED_BY_BULLETS)) {
-                            if (level.removeBlock(blockPos, false)) {
-                                Block.dropResources(blockState, level, blockPos);
-                            }
-                        }
-                    }
+            if (blockState.is(Blocks.TNT)) {
+                TntBlock.explode(level(), blockPos);
+                level().removeBlock(blockPos, false);
+            } else if (blockState.is(DESTROYED_BY_BULLETS)) {
+                if (level().removeBlock(blockPos, false)) {
+                    blockState.getBlock().destroy(level(), blockPos, blockState);
                 }
-                discardOnNextTick();
-
-            } else if (hitResult.getType() == HitResult.Type.BLOCK) {
-                Vec3 pos = hitResult.getLocation();
-                BlockState blockState = level.getBlockState(((BlockHitResult)hitResult).getBlockPos());
-                BlockParticleOption particle = new BlockParticleOption(ParticleTypes.BLOCK, blockState);
-                createHitParticles(particle, pos, Vec3.ZERO);
-                if (isOnFire()) {
-                    level.addParticle(ParticleTypes.DRIPPING_LAVA,
-                            pos.x, pos.y, pos.z, 0, 0.01, 0);
+            } else if (blockState.is(DROPPED_BY_BULLETS)) {
+                if (level().removeBlock(blockPos, false)) {
+                    Block.dropResources(blockState, level(), blockPos);
                 }
-                playHitSound(blockState.getSoundType().getBreakSound(), pos);
-                discard();
             }
-        } else if (level.isClientSide && !wasTouchingWater && soundEffectRoll()) {
-            double length = velocity.length();
-            Vec3 dir = velocity.scale(1.0 / length);
-            float volume = calculateEnergyFraction();
+        }
+    }
 
-            AABB aabbSelection = getBoundingBox().expandTowards(velocity).inflate(8.0);
-            Predicate<Entity> predicate = entity -> (entity instanceof Player) && !entity.equals(getOwner());
-            for (Entity entity : level().getEntities(this, aabbSelection, predicate)) {
-                Vec3 pos = new Vec3(entity.getX(), entity.getEyeY(), entity.getZ());
-                Vec3 diff = pos.subtract(from);
-                double proj = dir.dot(diff);
-                if (proj > 0 && proj < length) {
-                    Vec3 projPos = from.add(dir.scale(proj));
+    private void handleWaterEntry(Vec3 pos) {
+        if (level().isClientSide) {
+            createHitParticles(ParticleTypes.SPLASH, pos, new Vec3(0.0, 0.02, 0.0));
+            playHitSound(Sounds.BULLET_WATER_HIT, pos);
+        }
+    }
+
+    private void createFlightEffects(Vec3 from, Vec3 to, Vec3 velocity) {
+        if (!wasTouchingWater && soundEffectRoll()) {
+            createFlyBySound(from, to, velocity);
+        }
+        if (wasTouchingWater) {
+            createWaterBubbles(to, velocity);
+        }
+    }
+
+    private void handleBlockHit(BlockHitResult blockHit) {
+        if (!level().isClientSide) {
+            if (touchedWater) {
+                damage *= calculateEnergyFraction();
+            }
+            onHit(blockHit);
+            handleBlockDestruction(blockHit);
+            // 在这里添加 discard() 调用
+            discard();
+        } else {
+            createHitEffects(blockHit);
+        }
+    }
+
+    private void createFlyBySound(Vec3 from, Vec3 to, Vec3 velocity) {
+        double length = velocity.length();
+        Vec3 dir = velocity.normalize();
+        float volume = calculateEnergyFraction();
+
+        AABB aabbSelection = new AABB(from, to).inflate(8.0);
+        Predicate<Entity> predicate = entity -> (entity instanceof Player) && !entity.equals(getOwner());
+        for (Entity entity : level().getEntities(this, aabbSelection, predicate)) {
+            Vec3 entityPos = new Vec3(entity.getX(), entity.getEyeY(), entity.getZ());
+            Vec3 bulletToEntity = entityPos.subtract(from);
+            double proj = bulletToEntity.dot(dir);
+
+            if (proj > 0 && proj < length) {
+                Vec3 closestPoint = from.add(dir.scale(proj));
+                double distanceToPath = entityPos.subtract(closestPoint).length();
+
+                if (distanceToPath < 2.0) {  // 只在子弹路径附近播放音效
                     level().playLocalSound(
-                            projPos.x, projPos.y, projPos.z,
+                            closestPoint.x, closestPoint.y, closestPoint.z,
                             Sounds.BULLET_FLY_BY, getSoundSource(),
                             volume, 0.92f + 0.16f * random.nextFloat(), false
                     );
                 }
             }
         }
+    }
 
-        if (level.isClientSide && wasTouchingWater) {
-            double length = velocity.length();
-            Vec3 step = velocity.scale(1 / length);
-            Vec3 pos = waterPos.add(step.scale(0.5));
-            float prob = 1.5f * calculateEnergyFraction() / pelletCount();
-            while (length > 0.5) {
-                pos = pos.add(step);
-                length -= 1;
-                if (random.nextFloat() < prob) {
-                    level.addParticle(ParticleTypes.BUBBLE, pos.x, pos.y, pos.z, 0, 0, 0);
-                }
+    private void createWaterBubbles(Vec3 waterPos, Vec3 velocity) {
+        double length = velocity.length();
+        Vec3 step = velocity.scale(1 / length);
+        Vec3 pos = waterPos.add(step.scale(0.5));
+        float prob = 1.5f * calculateEnergyFraction() / pelletCount();
+        while (length > 0.5) {
+            pos = pos.add(step);
+            length -= 1;
+            if (random.nextFloat() < prob) {
+                level().addParticle(ParticleTypes.BUBBLE, pos.x, pos.y, pos.z, 0, 0, 0);
             }
         }
+    }
 
-        setPos(to);
-        distanceTravelled += to.subtract(from).length();
-        checkInsideBlocks();
+    private void createHitEffects(HitResult hitResult) {
+        if (hitResult.getType() == HitResult.Type.BLOCK) {
+            Vec3 pos = hitResult.getLocation();
+            BlockState blockState = level().getBlockState(((BlockHitResult)hitResult).getBlockPos());
+            BlockParticleOption particle = new BlockParticleOption(ParticleTypes.BLOCK, blockState);
+            createHitParticles(particle, pos, Vec3.ZERO);
+            if (isOnFire()) {
+                level().addParticle(ParticleTypes.DRIPPING_LAVA, pos.x, pos.y, pos.z, 0, 0.01, 0);
+            }
+            playHitSound(blockState.getSoundType().getBreakSound(), pos);
+        }
     }
 
     @Override
@@ -280,7 +314,6 @@ public class BulletEntity extends AbstractHurtingProjectile {
             damageMult = Config.mobDamageMultiplier;
         }
         DamageSource source = getDamageSource();
-        boolean ignite = isOnFire() && target.getType() != EntityType.ENDERMAN;
 
         if (pelletCount() == 1) {
             if (headshot) {
@@ -288,11 +321,10 @@ public class BulletEntity extends AbstractHurtingProjectile {
             }
             target.invulnerableTime = 0;
             target.hurt(source, damage * damageMult);
-            if (ignite) target.setSecondsOnFire((int)IGNITE_SECONDS);
 
         } else {
             damageMult /= pelletCount();
-            DeferredDamage.hurt(target, source, damage * damageMult, ignite ? 1.0f : 0.0f);
+            DeferredDamage.hurt(target, source, damage * damageMult, 0.0f);
         }
     }
 

@@ -3,7 +3,7 @@
 	"minecraft:geometry": [
 		{
 			"description": {
-				"identifier": "geometry.gun_1_2",
+				"identifier": "geometry.musket",
 				"texture_width": 130,
 				"texture_height": 147,
 				"visible_bounds_width": 3,
@@ -731,7 +731,36 @@
 						}
 					]
 				}
-			]
+			],
+			"item_display_transforms": {
+				"thirdperson_righthand": {
+					"translation": [0, -4.75, -6.25]
+				},
+				"thirdperson_lefthand": {
+					"translation": [0, -4.75, -6.25]
+				},
+				"firstperson_righthand": {
+					"rotation": [7, 7, -5],
+					"translation": [0.25, -5.25, -4.25]
+				},
+				"firstperson_lefthand": {
+					"rotation": [7, 7, -5],
+					"translation": [0.25, -5.25, -4.25]
+				},
+				"gui": {
+					"rotation": [79.33, -50.77, 81.69],
+					"translation": [2.75, -4.75, 0],
+					"scale": [0.92969, 0.92969, 0.92969]
+				},
+				"head": {
+					"scale": [1, 0, 0]
+				},
+				"fixed": {
+					"rotation": [-4, -84.75, 0],
+					"translation": [-0.5, -4, 0],
+					"scale": [0.69531, 0.69531, 0.69531]
+				}
+			}
 		}
 	]
 }
