@@ -18,13 +18,8 @@ import net.minecraftforge.network.NetworkEvent;
 
 public class ClientSetup {
     public ClientSetup(IEventBus bus) {
-        bus.addListener(this::setup);
         bus.addListener(this::registerRenderers);
 //        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOW, this::renderHand);
-    }
-
-    public void setup(final FMLClientSetupEvent event) {
-        ClientUtilities.registerItemProperties();
     }
 
     public void registerRenderers(final EntityRenderersEvent.RegisterRenderers event) {
