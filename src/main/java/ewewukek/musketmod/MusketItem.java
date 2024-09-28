@@ -30,7 +30,7 @@ import java.util.function.Consumer;
 
 public class MusketItem extends GunItem implements GeoItem {
     public final Multimap<Attribute, AttributeModifier> bayonetAttributeModifiers;
-    private static final RawAnimation RELOAD_ANIMATION = RawAnimation.begin().thenPlay("reload");
+    private static final RawAnimation RELOAD_ANIMATION = RawAnimation.begin().thenPlay("use.popup");
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public MusketItem(Properties properties, boolean withBayonet) {
@@ -74,8 +74,6 @@ public class MusketItem extends GunItem implements GeoItem {
             stack.hurtAndBreak(1, player, (ent) -> {
                 ent.broadcastBreakEvent(hand);
             });
-
-            player.releaseUsingItem();
 
             return InteractionResultHolder.consume(stack);
 

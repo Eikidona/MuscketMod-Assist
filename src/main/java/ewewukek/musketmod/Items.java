@@ -9,7 +9,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class Items {
-    public static final Item MUSKET = new MusketItem(new Item.Properties(),false);
+    public static final Item MUSKET = new MusketItem(new Item.Properties().stacksTo(1).durability(-1),false);
     public static final Item MUSKET_WITH_BAYONET = new MusketItem(new Item.Properties()
             .durability(Config.musketDurability), true);
     public static final Item BLUNDERBUSS = new BlunderbussItem(new Item.Properties()
