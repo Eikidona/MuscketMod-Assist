@@ -15,6 +15,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import software.bernie.geckolib.animatable.GeoItem;
 import software.bernie.geckolib.animatable.SingletonGeoAnimatable;
@@ -23,14 +24,13 @@ import software.bernie.geckolib.core.animation.AnimatableManager.ControllerRegis
 import software.bernie.geckolib.core.animation.AnimationController;
 import software.bernie.geckolib.core.animation.RawAnimation;
 import software.bernie.geckolib.core.object.PlayState;
-import software.bernie.geckolib.util.ClientUtils;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.function.Consumer;
 
 public class MusketItem extends GunItem implements GeoItem {
     public final Multimap<Attribute, AttributeModifier> bayonetAttributeModifiers;
-    private static final RawAnimation LOAD_ANIMATION = RawAnimation.begin().thenPlay("use.load");
+    private static final RawAnimation RELOAD_ANIMATION = RawAnimation.begin().thenPlay("reload");
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public MusketItem(Properties properties, boolean withBayonet) {
@@ -54,49 +54,60 @@ public class MusketItem extends GunItem implements GeoItem {
             return InteractionResultHolder.pass(player.getItemInHand(hand));
         }
         ItemStack stack = player.getItemInHand(hand);
-        if (!level.isClientSide && !isLoaded(stack) && player.isUsingItem()) {
-            if (level instanceof ServerLevel serverLevel) {
-                triggerAnim(player, GeoItem.getOrAssignId(stack, serverLevel), "musket_controller", "load");
-            }
+        if (!canUse(player) || !canUseFrom(player, hand)) {
+            return InteractionResultHolder.pass(stack);
         }
 
-        return super.use(level, player, hand);
+        if (isLoaded(stack)) {
+            if (stack.getOrCreateTag().getBoolean("JustReloaded")) {
+                stack.getOrCreateTag().remove("JustReloaded");
+                return InteractionResultHolder.pass(stack);
+            }
+
+            if (!level.isClientSide) {
+                Vec3 direction = Vec3.directionFromRotation(player.getXRot(), player.getYRot());
+                fire(player, stack, direction, smokeOffsetFor(player, hand));
+            }
+            player.playSound(fireSound(stack), 3.5f, 1);
+
+            setLoaded(stack, false);
+            stack.hurtAndBreak(1, player, (ent) -> {
+                ent.broadcastBreakEvent(hand);
+            });
+
+            player.releaseUsingItem();
+
+            return InteractionResultHolder.consume(stack);
+
+        } else {
+            if (!checkAmmo(player, stack)) {
+                return InteractionResultHolder.fail(stack);
+            }
+
+            player.startUsingItem(hand);
+            if (level instanceof ServerLevel serverLevel) {
+                MusketMod.LOGGER.info("Reloading musket");
+                triggerAnim(player, GeoItem.getOrAssignId(stack, serverLevel), "controller", "reload");
+            }
+
+            return InteractionResultHolder.consume(stack);
+        }
     }
 
     @Override
     public ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity entity) {
-        ItemStack result = super.finishUsingItem(stack, level, entity);
         if (!level.isClientSide) {
+            if (entity instanceof Player player) {
+                consumeAmmo(player, stack);
+            }
+            setLoaded(stack, true);
+            stack.getOrCreateTag().putBoolean("JustReloaded", true);
+            if (entity instanceof Player player) {
+                player.getCooldowns().addCooldown(stack.getItem(), 10);
+            }
             level.playSound(null, entity.getX(), entity.getY(), entity.getZ(), Sounds.MUSKET_READY, entity.getSoundSource(), 0.8f, 1);
         }
-        return result;
-    }
-
-    @Override
-    public void registerControllers(ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "musket_controller", 20, state -> PlayState.STOP)
-                .triggerableAnim("load", LOAD_ANIMATION)
-                .setSoundKeyframeHandler(state -> {
-                    Player player = ClientUtils.getClientPlayer();
-
-                    if (player != null)
-                        player.playSound(Sounds.MUSKET_LOAD_0, 1, 1);
-                }));
-    }
-
-    @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(new IClientItemExtensions() {
-            private MusketItemRender renderer;
-
-            @Override
-            public MusketItemRender getCustomRenderer() {
-                if (this.renderer == null)
-                    this.renderer = new MusketItemRender();
-
-                return this.renderer;
-            }
-        });
+        return stack;
     }
 
     @Override
@@ -111,7 +122,29 @@ public class MusketItem extends GunItem implements GeoItem {
     }
 
     @Override
+    public void registerControllers(ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "controller", state -> {
+            return PlayState.STOP;
+        }).triggerableAnim("reload", RELOAD_ANIMATION));
+    }
+
+    @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
         return this.cache;
+    }
+
+    @Override
+    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
+        consumer.accept(new IClientItemExtensions() {
+            private MusketItemRender renderer;
+
+            @Override
+            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                if (this.renderer == null)
+                    this.renderer = new MusketItemRender();
+
+                return this.renderer;
+            }
+        });
     }
 }
